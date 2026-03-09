@@ -61,6 +61,7 @@ const usuariosRTD = [
 let inicio = localStorage.getItem("inicioServicio") ? new Date(localStorage.getItem("inicioServicio")) : null;
 let timer = null;
 let turnos = JSON.parse(localStorage.getItem("turnos")) || [];
+let usuariosEnServicio = JSON.parse(localStorage.getItem("usuariosEnServicio")) || [];
 
 // ==== ESPERAR A QUE CARGUE LA PAGINA ====
 window.onload = function(){
@@ -79,6 +80,7 @@ window.onload = function(){
 
     if(inicio) toggleServicio(true); // Restaurar servicio activo si estaba iniciado
     cargarTabla();
+    actualizarUsuariosEnServicio(); // Mostrar quienes están en servicio al cargar
 };
 
 // ==== LOGIN ====
@@ -103,14 +105,21 @@ function iniciarSesion(){
 
 // ==== CERRAR SESIÓN ====
 function cerrarSesion(){
+    let usuarioActual = localStorage.getItem("usuario");
+    // Quitar de usuarios en servicio si estaba activo
+    usuariosEnServicio = usuariosEnServicio.filter(u => u !== usuarioActual);
+    localStorage.setItem("usuariosEnServicio", JSON.stringify(usuariosEnServicio));
+
     localStorage.removeItem("usuario");
     localStorage.removeItem("inicioServicio");
+    actualizarUsuariosEnServicio();
     location.reload();
 }
 
 // ==== INICIAR / CERRAR SERVICIO ====
 function toggleServicio(restaurando=false){
     const boton = document.getElementById("botonServicio");
+    const usuarioActual = localStorage.getItem("usuario");
 
     if(inicio === null){
         // INICIAR SERVICIO
@@ -119,6 +128,13 @@ function toggleServicio(restaurando=false){
 
         document.getElementById("entrada").innerText = inicio.toLocaleTimeString();
         boton.innerText = "Cerrar servicio";
+
+        // Agregar usuario a la lista de servicio
+        if(!usuariosEnServicio.includes(usuarioActual)){
+            usuariosEnServicio.push(usuarioActual);
+            localStorage.setItem("usuariosEnServicio", JSON.stringify(usuariosEnServicio));
+        }
+        actualizarUsuariosEnServicio();
 
         timer = setInterval(function(){
             let ahora = new Date();
@@ -143,8 +159,6 @@ function toggleServicio(restaurando=false){
 
         let duracion = fin - inicio;
 
-        let usuarioActual = localStorage.getItem("usuario");
-
         let turno = {
             usuario: usuarioActual,
             rol: roles[usuarioActual] || "Sin rol",
@@ -156,6 +170,12 @@ function toggleServicio(restaurando=false){
 
         turnos.push(turno);
         localStorage.setItem("turnos", JSON.stringify(turnos));
+
+        // Quitar usuario de servicio
+        usuariosEnServicio = usuariosEnServicio.filter(u => u !== usuarioActual);
+        localStorage.setItem("usuariosEnServicio", JSON.stringify(usuariosEnServicio));
+        actualizarUsuariosEnServicio();
+
         cargarTabla();
 
         boton.innerText = "Iniciar servicio";
@@ -205,5 +225,25 @@ function cargarTabla(){
             fila.insertCell(4).innerText = turno.salida;
             fila.insertCell(5).innerText = turno.duracion;
         });
+    }
+}
+
+// ==== MOSTRAR USUARIOS EN SERVICIO ====
+function actualizarUsuariosEnServicio(){
+    const contenedor = document.getElementById("usuariosEnServicio");
+    if(!contenedor) return;
+
+    contenedor.innerHTML = "";
+
+    if(usuariosEnServicio.length === 0){
+        contenedor.innerText = "No hay usuarios en servicio";
+    } else {
+        let ul = document.createElement("ul");
+        usuariosEnServicio.forEach(u => {
+            let li = document.createElement("li");
+            li.innerText = u + " (" + (roles[u] || "Sin rol") + ")";
+            ul.appendChild(li);
+        });
+        contenedor.appendChild(ul);
     }
 }
