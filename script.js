@@ -64,7 +64,7 @@ let turnos = JSON.parse(localStorage.getItem("turnos")) || [];
 let usuariosEnServicio = JSON.parse(localStorage.getItem("usuariosEnServicio")) || [];
 
 // ==== ESPERAR A QUE CARGUE LA PAGINA ====
-window.onload = function(){
+window.onload = function() {
     let usuario = localStorage.getItem("usuario");
 
     if(usuario){
@@ -73,14 +73,19 @@ window.onload = function(){
         document.getElementById("usuarioActivo").innerText = usuario;
     }
 
-    // Mostrar la fecha actual
+    // Mostrar fecha
     if(document.getElementById("fecha")){
         document.getElementById("fecha").innerText = new Date().toLocaleDateString();
     }
 
-    if(inicio) toggleServicio(true); // Restaurar servicio activo si estaba iniciado
+    // Restaurar servicio si estaba activo
+    if(localStorage.getItem("inicioServicio")){
+        inicio = new Date(localStorage.getItem("inicioServicio"));
+        toggleServicio(true); // restaurando
+    }
+
     cargarTabla();
-    actualizarUsuariosEnServicio(); // Mostrar quienes están en servicio al cargar
+    actualizarUsuariosEnServicio();
 };
 
 // ==== LOGIN ====
@@ -106,13 +111,14 @@ function iniciarSesion(){
 // ==== CERRAR SESIÓN ====
 function cerrarSesion(){
     let usuarioActual = localStorage.getItem("usuario");
-    // Quitar de usuarios en servicio si estaba activo
+
+    // Quitar de usuarios en servicio
     usuariosEnServicio = usuariosEnServicio.filter(u => u !== usuarioActual);
     localStorage.setItem("usuariosEnServicio", JSON.stringify(usuariosEnServicio));
+    actualizarUsuariosEnServicio();
 
     localStorage.removeItem("usuario");
     localStorage.removeItem("inicioServicio");
-    actualizarUsuariosEnServicio();
     location.reload();
 }
 
@@ -129,7 +135,7 @@ function toggleServicio(restaurando=false){
         document.getElementById("entrada").innerText = inicio.toLocaleTimeString();
         boton.innerText = "Cerrar servicio";
 
-        // Agregar usuario a la lista de servicio
+        // Agregar usuario a lista de servicio
         if(!usuariosEnServicio.includes(usuarioActual)){
             usuariosEnServicio.push(usuarioActual);
             localStorage.setItem("usuariosEnServicio", JSON.stringify(usuariosEnServicio));
@@ -202,7 +208,6 @@ function cargarTabla(){
 
     let usuarioActual = localStorage.getItem("usuario");
 
-    // Filtrar turnos: si es RTD ve todos, si no solo los propios
     let turnosFiltrados = usuariosRTD.includes(usuarioActual)
         ? turnos
         : turnos.filter(t => t.usuario === usuarioActual);
@@ -247,3 +252,11 @@ function actualizarUsuariosEnServicio(){
         contenedor.appendChild(ul);
     }
 }
+
+// ==== MENSAJE ANTES DE CERRAR O RECARGAR ====
+window.addEventListener("beforeunload", function(e){
+    if(inicio !== null){
+        e.preventDefault();
+        e.returnValue = "¡Atención! Tienes un servicio activo. ¿Estás seguro de que quieres salir?";
+    }
+});
